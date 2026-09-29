@@ -43,7 +43,8 @@ def test_aplicar_con_errores_devuelve_1(tmp_path: Path, monkeypatch, capsys) -> 
     def falla(*_args, **_kwargs):
         raise PermissionError("el archivo está abierto en otro programa")
 
-    monkeypatch.setattr("organizador.ejecucion.shutil.move", falla)
+    # Se simula el fallo en la operación de mover que usa la ejecución (enlace o movimiento).
+    monkeypatch.setattr("organizador.ejecucion.mover_sin_sobrescribir", falla)
     assert cli.main([str(tmp_path), "--aplicar"]) == 1
     assert "abierto en otro programa" in capsys.readouterr().err
 
@@ -113,3 +114,27 @@ def test_ejecutable_como_modulo(tmp_path: Path) -> None:
         check=True,
     )
     assert "Nada que ordenar" in salida.stdout
+
+
+def test_deshacer_con_registro_invalido_devuelve_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    (tmp_path / ".organizador").mkdir()
+    (tmp_path / ".organizador" / "registro-20260101-000000-000000.json").write_text(
+        '{"version": 1, "movimientos": [{"origen": "../x", "destino": "y"}]}', encoding="utf-8"
+    )
+    assert cli.main([str(tmp_path), "--deshacer"]) == 2
+    assert "No se puede deshacer" in capsys.readouterr().err
+
+
+def test_se_puede_ejecutar_como_modulo(tmp_path: Path) -> None:
+    import subprocess
+    import sys
+
+    salida = subprocess.run(
+        [sys.executable, "-m", "organizador", str(tmp_path)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "Carpeta" in salida.stdout or "nada" in salida.stdout.lower()

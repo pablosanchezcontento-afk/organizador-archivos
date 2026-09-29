@@ -13,7 +13,11 @@ Está pensada para ser **segura**:
 
 - 🔍 Por defecto **solo muestra** lo que haría. Nada se mueve sin `--aplicar`.
 - ↩️ Cada ejecución se puede **deshacer** con `--deshacer`.
-- 🛡️ **Nunca sobrescribe**: si ya existe `foto.jpg`, guarda `foto (1).jpg`.
+- 🛡️ **Nunca sobrescribe**: si ya existe `foto.jpg`, guarda `foto (1).jpg`. En el mismo disco el
+  movimiento es atómico (enlace duro + borrado), así que tampoco pisa un archivo que aparezca justo
+  en ese momento; si el archivo está abierto en otro programa, no queda duplicado.
+- 💥 **Resistente a cortes**: mientras mueve, anota cada paso en un diario; si se va la luz o pulsas
+  <kbd>Ctrl</kbd>+<kbd>C</kbd>, `--deshacer` devuelve lo que llegó a moverse.
 - ⏳ No toca **descargas a medias** (`.crdownload`, `.part`…), archivos ocultos ni `desktop.ini`.
 - 📁 Solo ordena los archivos sueltos. Las subcarpetas que ya tenías se respetan.
 
@@ -122,13 +126,18 @@ archivo a su sitio, **sin sobrescribir** nada que hayas creado después. Las
 carpetas de categoría que quedan vacías se borran. Si algo no se puede
 deshacer, el registro se conserva para volver a intentarlo.
 
+El registro se valida antes de usarlo: si está dañado o contiene rutas que
+salen de la carpeta (`../`, rutas absolutas, enlaces simbólicos), se rechaza
+con el código de salida `2` y no se mueve nada.
+
 ## Desarrollo
 
 ```bash
 git clone https://github.com/pablosanchezcontento-afk/organizador-archivos
 cd organizador-archivos
-uv run pytest           # 54 tests con cobertura (mínimo 95 %)
+uv run pytest           # 71 tests con cobertura (mínimo 95 %)
 uv run ruff check .     # análisis estático
+uv run mypy             # tipos (modo estricto)
 uv run organizar --help
 ```
 

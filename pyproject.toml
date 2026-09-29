@@ -31,7 +31,7 @@ Repositorio = "https://github.com/pablosanchezcontento-afk/organizador-archivos"
 packages = ["src/organizador"]
 
 [dependency-groups]
-dev = ["pytest>=9,<10", "pytest-cov>=7", "ruff>=0.16"]
+dev = ["pytest>=9,<10", "pytest-cov>=7", "ruff>=0.16", "mypy>=1.18"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -43,3 +43,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "PTH", "RUF"]
+
+[tool.mypy]
+strict = true
+files = ["src"]

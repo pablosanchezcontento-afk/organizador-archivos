@@ -8,7 +8,7 @@ from pathlib import Path
 
 from organizador import __version__
 from organizador.categorias import ErrorConfiguracion, cargar_configuracion
-from organizador.ejecucion import aplicar, deshacer, ultimo_registro
+from organizador.ejecucion import RegistroInvalido, aplicar, deshacer, ultimo_registro
 from organizador.plan import planificar, resumen
 
 DESCRIPCION = """\
@@ -103,7 +103,11 @@ def _deshacer(carpeta: Path) -> int:
     if registro is None:
         print(f"No hay nada que deshacer en {carpeta}.")
         return 0
-    resultado = deshacer(carpeta, registro)
+    try:
+        resultado = deshacer(carpeta, registro)
+    except RegistroInvalido as e:
+        print(f"No se puede deshacer: {e}", file=sys.stderr)
+        return 2
     print(f"Devueltos {len(resultado.movidos)} archivos a su sitio.")
     for ruta, error in resultado.errores:
         print(f"  {ruta.name}: {error}", file=sys.stderr)
