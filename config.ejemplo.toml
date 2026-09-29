@@ -1,0 +1,20 @@
+# Configuración de ejemplo para organizador-archivos.
+# Úsala con:  organizar --config config.ejemplo.toml
+
+# Si es false, los archivos que no encajan en ninguna categoría se quedan
+# donde están en lugar de ir a "Otros".
+mover_otros = true
+
+# Archivos que no se mueven nunca (sin distinguir mayúsculas).
+ignorar = ["LEEME.txt"]
+
+[categorias]
+# Una categoría nueva. Sus extensiones se quitan de las categorías de serie,
+# así que los PDF y DOCX irán aquí y no a "PDF" ni a "Documentos".
+"Apuntes DAW" = ["pdf", "docx", "odt"]
+
+# Sustituir una categoría de serie.
+"Imágenes" = ["jpg", "jpeg", "png", "webp", "heic"]
+
+# Una lista vacía elimina la categoría (sus archivos irán a "Otros").
+"Fuentes" = []
