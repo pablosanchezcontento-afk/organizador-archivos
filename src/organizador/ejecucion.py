@@ -64,20 +64,17 @@ def mover_sin_sobrescribir(origen: Path, destino: Path) -> None:
 
     En el mismo disco se usa un enlace duro, que el sistema crea de forma atómica
     y falla si el destino ya existe (no hay ventana entre comprobar y mover). Si
-    el sistema de archivos no admite enlaces (FAT, exFAT, otro disco), se
-    comprueba y se mueve.
+    el sistema de archivos no admite enlaces (FAT, exFAT, otro disco), el nombre
+    se reserva igual de forma atómica, creándolo en exclusiva, y después se ocupa.
     """
     try:
         os.link(origen, destino)
     except FileExistsError:
         raise FileExistsError(errno.EEXIST, f"ya existe {destino.name}") from None
-    except OSError as e:
+    except OSError:
         if not origen.exists():
             raise
-        # Enlaces no admitidos: comprobación explícita y movimiento normal.
-        if destino.exists():
-            raise FileExistsError(errno.EEXIST, f"ya existe {destino.name}") from e
-        shutil.move(origen, destino)
+        _mover_reservando_destino(origen, destino)
     else:
         try:
             origen.unlink()
@@ -86,6 +83,34 @@ def mover_sin_sobrescribir(origen: Path, destino: Path) -> None:
             # el enlace para no dejar el archivo duplicado y se informa del error.
             destino.unlink()
             raise
+
+
+def _mover_reservando_destino(origen: Path, destino: Path) -> None:
+    """Camino sin enlaces duros, también sin ventana entre comprobar y mover.
+
+    ``O_CREAT | O_EXCL`` crea el destino solo si no existe, en una única operación
+    del sistema: si otro programa lo crea antes, falla en vez de sobrescribirlo. La
+    reserva vacía se sustituye después por el archivo (``os.replace`` en el mismo
+    disco) o se rellena copiándolo (entre discos).
+    """
+    try:
+        os.close(os.open(destino, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
+    except FileExistsError:
+        raise FileExistsError(errno.EEXIST, f"ya existe {destino.name}") from None
+    try:
+        try:
+            origen.replace(destino)
+        except OSError as e:
+            if e.errno != errno.EXDEV:
+                raise
+            shutil.copy2(origen, destino)
+            origen.unlink()
+    except BaseException:
+        # Se deshace la reserva (o la copia) solo mientras el original siga en su sitio:
+        # nunca se borra la única copia del archivo.
+        if origen.exists():
+            destino.unlink(missing_ok=True)
+        raise
 
 
 def _anotar_en_diario(carpeta: Path, diario: Path, origen: Path, destino: Path) -> None:

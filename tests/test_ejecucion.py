@@ -142,6 +142,62 @@ def test_mover_sin_enlaces_duros_usa_el_camino_alternativo(tmp_path: Path, monke
     assert (tmp_path / "b.pdf").read_text(encoding="utf-8") == "datos"
 
 
+def _sin_enlaces(monkeypatch) -> None:
+    def sin_enlaces(*_args, **_kwargs):
+        raise OSError(errno.EPERM, "enlaces no admitidos")
+
+    monkeypatch.setattr("organizador.ejecucion.os.link", sin_enlaces)
+
+
+def test_sin_enlaces_no_pisa_un_destino_creado_en_la_ventana(tmp_path: Path, monkeypatch) -> None:
+    # Otro programa crea el destino justo después de cualquier comprobación previa: se
+    # simula haciendo que exists() diga que no está. La reserva exclusiva lo detecta igual.
+    _sin_enlaces(monkeypatch)
+    origen = crear(tmp_path, "a.pdf", "mío")
+    ajeno = crear(tmp_path, "b.pdf", "de otro programa")
+    real = Path.exists
+
+    def exists(self: Path, *args: object, **kwargs: object) -> bool:
+        return False if self == ajeno else real(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "exists", exists)
+    with pytest.raises(FileExistsError, match="ya existe"):
+        mover_sin_sobrescribir(origen, ajeno)
+    assert ajeno.read_text(encoding="utf-8") == "de otro programa"
+    assert origen.read_text(encoding="utf-8") == "mío"
+
+
+def test_sin_enlaces_entre_discos_copia_y_borra_el_original(tmp_path: Path, monkeypatch) -> None:
+    _sin_enlaces(monkeypatch)
+
+    def otro_disco(*_args, **_kwargs):
+        raise OSError(errno.EXDEV, "otro disco")
+
+    monkeypatch.setattr("organizador.ejecucion.os.replace", otro_disco)
+    origen = crear(tmp_path, "a.pdf", "datos")
+    mover_sin_sobrescribir(origen, tmp_path / "b.pdf")
+    assert (tmp_path / "b.pdf").read_text(encoding="utf-8") == "datos"
+    assert not origen.exists()
+
+
+def test_si_la_copia_falla_se_deshace_la_reserva(tmp_path: Path, monkeypatch) -> None:
+    _sin_enlaces(monkeypatch)
+
+    def otro_disco(*_args, **_kwargs):
+        raise OSError(errno.EXDEV, "otro disco")
+
+    def disco_lleno(*_args, **_kwargs):
+        raise OSError(errno.ENOSPC, "sin espacio")
+
+    monkeypatch.setattr("organizador.ejecucion.os.replace", otro_disco)
+    monkeypatch.setattr("organizador.ejecucion.shutil.copy2", disco_lleno)
+    origen = crear(tmp_path, "a.pdf", "datos")
+    with pytest.raises(OSError, match="sin espacio"):
+        mover_sin_sobrescribir(origen, tmp_path / "b.pdf")
+    assert not (tmp_path / "b.pdf").exists()
+    assert origen.read_text(encoding="utf-8") == "datos"
+
+
 def test_mover_un_origen_inexistente_falla(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         mover_sin_sobrescribir(tmp_path / "no.pdf", tmp_path / "si.pdf")
