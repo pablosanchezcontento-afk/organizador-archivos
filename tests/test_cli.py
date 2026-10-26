@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -138,3 +139,16 @@ def test_se_puede_ejecutar_como_modulo(tmp_path: Path) -> None:
         check=True,
     )
     assert "Carpeta" in salida.stdout or "nada" in salida.stdout.lower()
+
+
+def test_nombres_con_emoji_no_rompen_la_salida_redirigida(tmp_path: Path) -> None:
+    # Windows usa cp1252 al redirigir la salida; antes esto lanzaba UnicodeEncodeError.
+    crear(tmp_path, "foto😀.png")
+    salida = subprocess.run(
+        [sys.executable, "-m", "organizador", str(tmp_path), "--detalle"],
+        capture_output=True,
+        env={**os.environ, "PYTHONIOENCODING": "cp1252"},
+        check=False,
+    )
+    assert salida.returncode == 0, salida.stderr
+    assert rb"foto\U0001f600.png" in salida.stdout

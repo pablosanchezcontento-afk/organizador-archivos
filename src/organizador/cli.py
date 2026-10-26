@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import io
 import sys
 from pathlib import Path
 
@@ -56,6 +57,11 @@ def crear_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     """Punto de entrada. Devuelve el código de salida (0 = todo bien)."""
+    # Con la salida redirigida, Windows usa la página de códigos del sistema (cp1252), que no
+    # tiene emojis ni otros alfabetos: un nombre así no debe romper el programa.
+    for flujo in (sys.stdout, sys.stderr):
+        if isinstance(flujo, io.TextIOWrapper):
+            flujo.reconfigure(errors="backslashreplace")
     args = crear_parser().parse_args(argv)
     carpeta = (args.carpeta or carpeta_descargas()).expanduser().resolve()
     if not carpeta.is_dir():
