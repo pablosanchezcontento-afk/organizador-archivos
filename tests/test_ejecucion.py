@@ -309,3 +309,20 @@ def test_un_enlace_simbolico_no_permite_salir_de_la_carpeta(tmp_path: Path) -> N
     registro.write_text(json.dumps({"version": 1, "movimientos": [movimiento]}), encoding="utf-8")
     with pytest.raises(RegistroInvalido):
         deshacer(carpeta, registro)
+
+
+def test_archivo_llamado_como_una_categoria_no_bloquea_su_carpeta(tmp_path: Path) -> None:
+    # "PDF" sin extensión va a Otros; antes, "a.pdf" (que va antes por orden) fallaba
+    # porque la carpeta PDF no se podía crear mientras existía el archivo.
+    for nombre in ["a.pdf", "PDF", "z.pdf"]:
+        crear(tmp_path, nombre)
+    resultado = aplicar(tmp_path, planificar(tmp_path, Configuracion()))
+
+    assert resultado.errores == []
+    assert sorted(p.name for p in (tmp_path / "PDF").iterdir()) == ["a.pdf", "z.pdf"]
+    assert (tmp_path / "Otros" / "PDF").is_file()
+
+
+def test_archivo_otros_sin_extension_se_queda_en_su_sitio(tmp_path: Path) -> None:
+    crear(tmp_path, "Otros")
+    assert planificar(tmp_path, Configuracion()) == []

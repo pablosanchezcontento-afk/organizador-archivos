@@ -135,7 +135,7 @@ con el código de salida `2` y no se mueve nada.
 ```bash
 git clone https://github.com/pablosanchezcontento-afk/organizador-archivos
 cd organizador-archivos
-uv run pytest           # 71 tests con cobertura (mínimo 95 %)
+uv run pytest           # 77 tests con cobertura (mínimo 95 %)
 uv run ruff check .     # análisis estático
 uv run mypy             # tipos (modo estricto)
 uv run organizar --help

@@ -79,11 +79,19 @@ def planificar(
         categoria = config.categoria_de(ruta)
         if categoria is None:
             continue
+        if ruta.name.casefold() == categoria.casefold():
+            # Un archivo "Otros" sin extensión tendría que ir dentro de sí mismo.
+            continue
         destino = carpeta / categoria
         if por_fecha:
             fecha = datetime.fromtimestamp(ruta.stat().st_mtime)
             destino = destino / fecha.strftime("%Y-%m")
         plan.append(Movimiento(ruta, nombre_libre(destino, ruta.name, ocupados), categoria))
+
+    # Un archivo suelto llamado como una carpeta de categoría (por ejemplo, "PDF" sin
+    # extensión) impide crearla: se mueve antes que los demás para dejarle sitio.
+    categorias = {m.categoria.casefold() for m in plan}
+    plan.sort(key=lambda m: m.origen.name.casefold() not in categorias)
     return plan
 
 
